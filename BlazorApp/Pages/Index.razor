@@ -1,0 +1,36 @@
+﻿@page "/"
+@using BlazorApp.Data
+@inject HMIService HMIServ
+
+<div class="container">
+   <div class="beer_logo">
+      @if (HMIServ.logo)
+	  {
+         <BeerLogo></BeerLogo>
+	  }
+	  else
+	  {
+		 <BeerTap></BeerTap>
+	  }
+   </div>
+   <div class="nfc_logo">
+      <img src="/img/nfc-symbol.jpg" />
+   </div>
+   <div class="info_text">
+      @if (HMIServ.logo)
+	  {
+      <h3>Guthabenkarte scannen</h3>
+	  }
+	  else
+	  {
+      <Guthaben></Guthaben>
+	  }
+   </div>
+</div>
+@code{
+   protected async override Task OnInitializedAsync()
+   { 
+	  HMIServ.PropertyChangedEvent +=(_, __)=>InvokeAsync(StateHasChanged);
+   }
+
+}

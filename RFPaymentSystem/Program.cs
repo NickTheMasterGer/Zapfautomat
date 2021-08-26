@@ -60,10 +60,11 @@ namespace RFPaymentSystem
          while (!exit);
       }
 
-         /// <summary>
-         /// Tests the rfid controller.
-         /// </summary>
-         public static void TestRfidController()
+      /// <summary>
+      /// Tests the rfid controller.
+      /// </summary>
+      private static byte[] cardUid=new byte[4];
+      public static void TestRfidController()
          {
             Console.WriteLine("Testing RFID");
             var device = new RFIDControllerMfrc522(Pi.Spi.Channel0, 500000, Pi.Gpio[18]);
@@ -72,15 +73,20 @@ namespace RFPaymentSystem
             {
                // If a card is found
                if (device.DetectCard() != RFIDControllerMfrc522.Status.AllOk) continue;
-               Console.WriteLine("Card detected");
+               
 
                // Get the UID of the card
                var uidResponse = device.ReadCardUniqueId();
 
                // If we have the UID, continue
                if (uidResponse.Status != RFIDControllerMfrc522.Status.AllOk) continue;
-
-               var cardUid = uidResponse.Data;
+               //If we have same UID as last time, continue
+               if (  uidResponse.Data[0] == cardUid[0]
+                && uidResponse.Data[1] == cardUid[1]
+                && uidResponse.Data[2] == cardUid[2]
+                && uidResponse.Data[3] == cardUid[3]) continue;
+            Console.WriteLine("New Card detected");
+            cardUid = uidResponse.Data;
 
                // Print UID
                Console.WriteLine($"Card UID: {cardUid[0]},{cardUid[1]},{cardUid[2]},{cardUid[3]}");
@@ -95,7 +101,7 @@ namespace RFPaymentSystem
                   var data = new byte[16 * 3];
                   for (var x = 0; x < data.Length; x++)
                   {
-                     data[x] = (byte)(x + 65);
+                     data[x] = (byte)(x + 10);
                   }
 
                   for (var b = 0; b < 3; b++)

@@ -15,13 +15,18 @@ namespace RFPaymentSystem
       private const string ExitMessage = "Press Esc key to continue . . .";
       public static RFIDControllerMfrc522 device;
       private static byte[] cardUid;
-      static void Main(string[] args)
+      static async Task Main(string[] args)
 	  {
 		 Pi.Init<BootstrapWiringPi>();
          device = new RFIDControllerMfrc522(Pi.Spi.Channel0, 500000, Pi.Gpio[18]);
          cardUid = new byte[4];
-
-         TestRfidController();
+         while(true)
+		 {
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine("---------- Wilkommen ------------");
+            await TestRfidController();
+		 }
+         
       }
 
       /// <summary>
@@ -29,16 +34,50 @@ namespace RFPaymentSystem
       /// </summary>
       
       public static async Task TestRfidController()
+      {
+         Console.WriteLine("Karte einlesen");
+         cardUid= await CardDetected();
+
+         // Print UID
+         Console.ForegroundColor = ConsoleColor.Green;
+         Console.WriteLine($"Card UID: {cardUid[0]},{cardUid[1]},{cardUid[2]},{cardUid[3]}");
+         Console.ForegroundColor = ConsoleColor.Blue;
+         Console.WriteLine("Zum Bier kaufen erneut einlesen");
+
+		 Task<Byte[]> WaitForCard=CardDetected();
+
+         if (await Task.WhenAny(WaitForCard, Task.Delay(5000)) == WaitForCard)
          {
-            Console.WriteLine("Testing RFID");
-            cardUid= await CardDetected(cardUid);
+            // task completed within timeout
 
-            // Print UID
-            Console.WriteLine($"Card UID: {cardUid[0]},{cardUid[1]},{cardUid[2]},{cardUid[3]}");
-
+            //If we have same UID as last time, continue
+            if (WaitForCard.Result[0] == cardUid[0]
+               && WaitForCard.Result[1] == cardUid[1]
+               && WaitForCard.Result[2] == cardUid[2]
+               && WaitForCard.Result[3] == cardUid[3])
+		    {
+               Console.ForegroundColor = ConsoleColor.Blue;
+               Console.WriteLine("Bier gekauft");
+            }
+            else
+            {
+               Console.ForegroundColor = ConsoleColor.Red;
+               Console.WriteLine("Bitte die gleiche Karte erneut vorhalten.");
+            }
+         }
+         else
+         {
+            // handle timeout
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("leider kein Bier");
+		 }
+ 
+         /*
             // Select the scanned tag
             device.SelectCardUniqueId(cardUid);
+         */
 
+         /*
             // Writing data to sector 1 blocks
             // Authenticate sector
             if (device.AuthenticateCard1A(RFIDControllerMfrc522.DefaultAuthKey, cardUid, 7) == RFIDControllerMfrc522.Status.AllOk)
@@ -53,7 +92,9 @@ namespace RFPaymentSystem
                   device.CardWriteData((byte)(4 + b), data.Skip(b * 16).Take(16).ToArray());
                }
             }
+            */
 
+         /*
             // Reading data
             var continueReading = true;
             for (var s = 0; s < 16 && continueReading; s++)
@@ -80,30 +121,23 @@ namespace RFPaymentSystem
                }
             }
             device.ClearCardSelection();
-         }
+         */
+      }
 
-      private static async Task<byte[]> CardDetected(byte[] last_Uid)
+      private static async Task<byte[]> CardDetected()
       {
          while (true)
          {
-            Console.WriteLine("detect Task");
             await Task.Delay(1000);
             // If a card is found
             if (device.DetectCard() != RFIDControllerMfrc522.Status.AllOk) continue;
-            Console.WriteLine("Card detected");
+            //Console.WriteLine("Card detected");
 
             // Get the UID of the card
             var uidResponse = device.ReadCardUniqueId();
 
             // If we have the UID, continue
             if (uidResponse.Status != RFIDControllerMfrc522.Status.AllOk) continue;
-               
-               
-            //If we have same UID as last time, continue
-            if (uidResponse.Data[0] == last_Uid[0]
-               && uidResponse.Data[1] == last_Uid[1]
-               && uidResponse.Data[2] == last_Uid[2]
-               && uidResponse.Data[3] == last_Uid[3]) continue;
                
             return uidResponse.Data;
             // New Card detected
